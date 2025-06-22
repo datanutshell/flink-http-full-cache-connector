@@ -1,0 +1,299 @@
+plugins {
+    id 'scala'
+    id 'java'
+    id 'maven-publish'
+    id 'signing'
+    id 'org.jreleaser' version '1.17.0'
+}
+
+group = 'com.datanutshell.flink'
+version = '1.0'
+
+repositories {
+    mavenCentral()
+    // Add Apache repository for latest Flink versions
+    maven {
+        url "https://repository.apache.org/content/repositories/snapshots/"
+        mavenContent {
+            snapshotsOnly()
+        }
+    }
+}
+
+ext {
+    flinkVersion = '1.19.0'
+    scalaVersion = '2.12'
+    scalaFullVersion = '2.12.17'
+    scalaBinaryVersion = '2.12'
+    scalatestVersion = '3.2.18'
+    scalatestPlusJunit5Version = '3.2.18.0'
+    junitJupiterVersion = '5.10.2'
+    mockitoVersion = '5.12.0'
+    mockitoScalaVersion = '1.17.30'
+    jacksonVersion = '2.17.1'
+    slf4jVersion = '2.0.13'
+    log4jVersion = '2.23.1'
+    testcontainersVersion = '1.19.8'
+    mockserverVersion = '5.15.0'
+    scalaTestVersion = '3.2.17'
+}
+
+// Define configurations before dependencies
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
+dependencies {
+    // Scala
+    implementation "org.scala-lang:scala-library:${scalaFullVersion}"
+    
+    // Flink Core - Java modules don't need Scala version
+    implementation "org.apache.flink:flink-core:${flinkVersion}"
+    implementation "org.apache.flink:flink-streaming-java:${flinkVersion}"
+    implementation "org.apache.flink:flink-streaming-scala_${scalaVersion}:${flinkVersion}"
+    
+    // Flink Table API & SQL
+    implementation "org.apache.flink:flink-table-api-java:${flinkVersion}"
+    implementation "org.apache.flink:flink-table-api-scala_${scalaVersion}:${flinkVersion}"
+    implementation "org.apache.flink:flink-table-api-java-bridge:${flinkVersion}"
+    implementation "org.apache.flink:flink-table-api-scala-bridge_${scalaVersion}:${flinkVersion}"
+    implementation "org.apache.flink:flink-table-runtime:${flinkVersion}"
+    implementation "org.apache.flink:flink-table-common:${flinkVersion}"
+    implementation "org.apache.flink:flink-table-planner_${scalaVersion}:${flinkVersion}"
+    
+    // Format support
+    implementation "org.apache.flink:flink-json:${flinkVersion}"
+    
+    // Common Flink APIs
+    implementation "org.apache.flink:flink-annotations:${flinkVersion}"
+    implementation "org.apache.flink:flink-connector-base:${flinkVersion}"
+    
+    // Jackson for JSON processing
+    implementation "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"
+    implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    implementation "com.fasterxml.jackson.module:jackson-module-scala_${scalaVersion}:${jacksonVersion}"
+    
+    // Java HTTP Client (comes with Java 11+)
+    // No explicit dependency needed unless targeting older Java versions
+    
+    // Logging
+    implementation "org.slf4j:slf4j-api:${slf4jVersion}"
+    runtimeOnly "org.apache.logging.log4j:log4j-slf4j2-impl:${log4jVersion}"
+    runtimeOnly "org.apache.logging.log4j:log4j-api:${log4jVersion}"
+    runtimeOnly "org.apache.logging.log4j:log4j-core:${log4jVersion}"
+    
+    // Test dependencies
+    testImplementation "org.apache.flink:flink-test-utils:${flinkVersion}"
+    testImplementation "org.apache.flink:flink-test-utils-junit:${flinkVersion}"
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
+    testImplementation "org.scalatest:scalatest_${scalaVersion}:3.2.19"
+    testRuntimeOnly "org.junit.platform:junit-platform-engine:1.12.0"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.12.0"
+    testRuntimeOnly "org.scalatestplus:junit-5-12_${scalaVersion}:3.2.19.0"
+    testImplementation 'org.mockito:mockito-core:5.3.1'
+    testImplementation 'org.mockito:mockito-scala_2.12:1.17.12'
+    
+    // Testcontainers for integration testing - using platform for BOM
+    integrationTestImplementation platform("org.testcontainers:testcontainers-bom:${testcontainersVersion}")
+    integrationTestImplementation "org.testcontainers:testcontainers:${testcontainersVersion}"
+    integrationTestImplementation "org.testcontainers:junit-jupiter:${testcontainersVersion}"
+    integrationTestImplementation "org.testcontainers:mockserver:${testcontainersVersion}"
+    integrationTestImplementation "org.mock-server:mockserver-client-java:${mockserverVersion}"
+    integrationTestImplementation "org.mock-server:mockserver-junit-jupiter:${mockserverVersion}"
+    integrationTestImplementation "org.mock-server:mockserver-core:${mockserverVersion}"
+    integrationTestImplementation "org.scalatest:scalatest_${scalaBinaryVersion}:3.2.17"
+    integrationTestImplementation "org.junit.jupiter:junit-jupiter-api:${junitJupiterVersion}"
+    integrationTestRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitJupiterVersion}"
+}
+
+test {
+    useJUnitPlatform {
+        includeEngines 'scalatest'
+        testLogging {
+            events "passed", "skipped", "failed", "standard_error"
+        }
+    }
+}
+
+sourceCompatibility = '11'  // Using Java 11 for HttpClient support
+targetCompatibility = '11'
+
+sourceSets {
+    main {
+        scala {
+            srcDirs = ['lib/src/main/scala']
+        }
+        resources {
+            srcDirs = ['lib/src/main/resources']
+        }
+    }
+    test {
+        scala {
+            srcDirs = ['lib/src/test/scala']
+        }
+        resources {
+            srcDirs = ['lib/src/test/resources']
+        }
+    }
+    integrationTest {
+        scala.srcDir file('lib/src/integrationTest/scala')
+        resources.srcDir file('lib/src/integrationTest/resources')
+        compileClasspath += sourceSets.main.output + configurations.testRuntimeClasspath
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+task integrationTest(type: Test) {
+    description = 'Runs integration tests.'
+    group = 'verification'
+
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    shouldRunAfter test
+
+    useJUnitPlatform {
+        includeEngines 'scalatest'
+        testLogging {
+            events "passed", "skipped", "failed", "standard_error"
+        }
+    }
+    testLogging {
+        events "passed", "skipped", "failed", "standard_error"
+        showStandardStreams = true
+        exceptionFormat = 'full'
+    }
+    reports {
+        html.required = true
+    }
+}
+
+check.dependsOn integrationTest
+
+// Scala compiler options
+tasks.withType(ScalaCompile) {
+    scalaCompileOptions.additionalParameters = ["-feature", "-deprecation", "-language:implicitConversions", "-language:postfixOps"]
+    scalaCompileOptions.forkOptions.jvmArgs += "-Xss16M" // Increase stack size
+}
+
+// Java compiler options
+tasks.withType(JavaCompile) {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+// Generate sources and javadoc JARs
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
+// Maven Publishing Configuration for JReleaser
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = 'com.datanutshell.flink'
+            artifactId = 'flink-http-lookup-connector'
+            
+            from components.java
+            
+            pom {
+                name = 'Flink HTTP Lookup Connector'
+                description = 'A Flink connector for HTTP-based lookups with full caching support'
+                url = 'https://github.com/dataengnutshell/flink-http-full-cache-connector'
+                inceptionYear = '2024'
+                
+                licenses {
+                    license {
+                        name = 'Apache-2.0'
+                        url = 'https://spdx.org/licenses/Apache-2.0.html'
+                    }
+                }
+                
+                developers {
+                    developer {
+                        id = 'dataengnutshell'
+                        name = 'Data Engineering Nutshell'
+                    }
+                }
+                
+                scm {
+                    connection = 'scm:git:https://github.com/dataengnutshell/flink-http-full-cache-connector.git'
+                    developerConnection = 'scm:git:ssh://github.com/dataengnutshell/flink-http-full-cache-connector.git'
+                    url = 'https://github.com/dataengnutshell/flink-http-full-cache-connector'
+                }
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            url = layout.buildDirectory.dir('staging-deploy')
+        }
+    }
+}
+
+// JReleaser Configuration
+jreleaser {
+    project {
+        name = 'http-lookup-connector'
+        description = 'A Flink connector for HTTP-based lookups with full caching support'
+        longDescription = 'This connector provides HTTP-based lookup functionality for Apache Flink with comprehensive caching support, enabling efficient data enrichment in streaming applications.'
+        website = 'https://github.com/dataengnutshell/flink-http-full-cache-connector'
+        authors = ['Data Engineering Nutshell']
+        license = 'Apache-2.0'
+        inceptionYear = '2024'
+        
+        java {
+            groupId = 'com.datanutshell.flink'
+            artifactId = 'flink-http-lookup-connector'
+            version = project.version
+        }
+    }
+    
+    signing {
+        active = 'ALWAYS'
+        armored = true
+    }
+    
+    deploy {
+        maven {
+            mavenCentral {
+                sonatype {
+                    active = 'ALWAYS'
+                    url = 'https://central.sonatype.com/api/v1/publisher'
+                    stagingRepository('build/staging-deploy')
+                    // Explicitly set namespace to control bundle naming
+                    namespace = 'com.datanutshell.flink'
+                    // Username and password will be provided via environment variables
+                    // JRELEASER_MAVENCENTRAL_USERNAME and JRELEASER_MAVENCENTRAL_PASSWORD
+                }
+            }
+        }
+    }
+    
+    release {
+        github {
+            overwrite = true
+            changelog {
+                formatted = 'ALWAYS'
+                preset = 'conventional-commits'
+            }
+        }
+    }
+}
+
+// Suppress validation warnings for publishing
+tasks.withType(GenerateModuleMetadata) {
+    suppressedValidationErrors.add('enforced-platform')
+}
+
+// Configure Javadoc to handle Scala sources
+javadoc {
+    if(JavaVersion.current().isJava9Compatible()) {
+        options.addBooleanOption('html5', true)
+    }
+    // Exclude Scala files from Javadoc generation
+    exclude '**/*.scala'
+} 

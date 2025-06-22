@@ -1,0 +1,91 @@
+plugins {
+    id 'scala'
+    id 'java'
+    id 'application'
+}
+
+group = 'com.datanutshell.examples'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+    mavenLocal() // For locally published connector
+}
+
+ext {
+    flinkVersion = '1.19.0'
+    scalaVersion = '2.12'
+    scalaFullVersion = '2.12.17'
+    scalaBinaryVersion = '2.12'
+    scalatestVersion = '3.2.18'
+    junitJupiterVersion = '5.10.2'
+}
+
+dependencies {
+    // Our HTTP Lookup Connector
+    implementation 'com.datanutshell.flink:http-lookup-connector:1.0'
+    
+    // Scala
+    implementation "org.scala-lang:scala-library:${scalaFullVersion}"
+    
+    // Flink Core
+    implementation "org.apache.flink:flink-streaming-java:${flinkVersion}"
+    implementation "org.apache.flink:flink-streaming-scala_${scalaVersion}:${flinkVersion}"
+    implementation "org.apache.flink:flink-clients:${flinkVersion}"
+    
+    // Flink Table API
+    implementation "org.apache.flink:flink-table-api-java:${flinkVersion}"
+    implementation "org.apache.flink:flink-table-api-scala_${scalaVersion}:${flinkVersion}"
+    implementation "org.apache.flink:flink-table-api-java-bridge:${flinkVersion}"
+    implementation "org.apache.flink:flink-table-api-scala-bridge_${scalaVersion}:${flinkVersion}"
+    implementation "org.apache.flink:flink-table-runtime:${flinkVersion}"
+    implementation "org.apache.flink:flink-table-planner_${scalaVersion}:${flinkVersion}"
+    
+    // JSON processing
+    implementation "org.apache.flink:flink-json:${flinkVersion}"
+    implementation "com.fasterxml.jackson.core:jackson-core:2.17.1"
+    implementation "com.fasterxml.jackson.core:jackson-databind:2.17.1"
+    
+    // Logging
+    implementation "org.slf4j:slf4j-api:2.0.13"
+    runtimeOnly "org.apache.logging.log4j:log4j-slf4j2-impl:2.23.1"
+    runtimeOnly "org.apache.logging.log4j:log4j-api:2.23.1"
+    runtimeOnly "org.apache.logging.log4j:log4j-core:2.23.1"
+    
+    // Test dependencies
+    testImplementation "org.apache.flink:flink-test-utils:${flinkVersion}"
+    testImplementation "org.apache.flink:flink-test-utils-junit:${flinkVersion}"
+    testImplementation "org.scalatest:scalatest_${scalaVersion}:${scalatestVersion}"
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
+    testRuntimeOnly "org.junit.platform:junit-platform-engine:1.12.0"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.12.0"
+    testRuntimeOnly "org.scalatestplus:junit-5-12_${scalaVersion}:3.2.19.0"
+}
+
+sourceCompatibility = '11'
+targetCompatibility = '11'
+
+application {
+    mainClass = 'com.datanutshell.examples.FlinkHttpConnectorExample'
+}
+
+test {
+    useJUnitPlatform {
+        includeEngines 'scalatest'
+        testLogging {
+            events "passed", "skipped", "failed", "standard_error"
+        }
+    }
+}
+
+// Scala compiler options
+tasks.withType(ScalaCompile) {
+    scalaCompileOptions.additionalParameters = ["-feature", "-deprecation", "-language:implicitConversions", "-language:postfixOps"]
+}
+
+// Java compiler options
+tasks.withType(JavaCompile) {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+} 

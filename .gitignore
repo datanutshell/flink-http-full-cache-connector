@@ -1,0 +1,38 @@
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
+build
+
+# IDE and editor files
+.metals
+.vscode
+.idea
+.cursorignore
+.bloop
+
+# Publishing and signing files
+*.asc
+*.gpg
+gradle.properties.local
+local.properties
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Test output
+test-output/
+reports/
+
+docs

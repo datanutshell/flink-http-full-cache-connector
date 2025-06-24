@@ -20,8 +20,7 @@ class HttpLookupConnectorTest extends AnyFlatSpec with Matchers with TableDriven
     val tableEnv = StreamTableEnvironment.create(env, settings)
 
     // Create a dummy temporal table with some data
-    tableEnv.executeSql(
-      """
+    tableEnv.executeSql("""
         |CREATE TABLE orders (
         |  order_id STRING,
         |  user_id INT,
@@ -39,8 +38,7 @@ class HttpLookupConnectorTest extends AnyFlatSpec with Matchers with TableDriven
         |""".stripMargin)
 
     // Create the HTTP lookup table
-    tableEnv.executeSql(
-      """
+    tableEnv.executeSql("""
         |CREATE TABLE user_profiles (
         |  id INT,
         |  name STRING,
@@ -55,8 +53,7 @@ class HttpLookupConnectorTest extends AnyFlatSpec with Matchers with TableDriven
         |""".stripMargin)
 
     // Perform a lookup join between orders and user profiles
-    val result = tableEnv.sqlQuery(
-      """
+    val result = tableEnv.sqlQuery("""
         |SELECT 
         |  o.order_id,
         |  o.user_id,
@@ -73,7 +70,7 @@ class HttpLookupConnectorTest extends AnyFlatSpec with Matchers with TableDriven
     // Execute the query and collect results
     val resultTable = result.execute()
     val iterator = resultTable.collect()
-    
+
     // Convert iterator to a list, but limit to 10 elements for testing
     val results = new ArrayBuffer[Row]()
     var count = 0
@@ -86,7 +83,7 @@ class HttpLookupConnectorTest extends AnyFlatSpec with Matchers with TableDriven
     // Verify we got some results
     results should not be empty
     results.size should be <= 10
-    
+
     // Print the results for inspection
     println(s"Collected ${results.size} results:")
     results.foreach(println)
@@ -98,8 +95,7 @@ class HttpLookupConnectorTest extends AnyFlatSpec with Matchers with TableDriven
     val tableEnv = StreamTableEnvironment.create(env, settings)
 
     // Create a source table with IDs 1-10
-    tableEnv.executeSql(
-      """
+    tableEnv.executeSql("""
         |CREATE TABLE source_ids (
         |  id INT,
         |  proc_time AS PROCTIME()
@@ -113,8 +109,7 @@ class HttpLookupConnectorTest extends AnyFlatSpec with Matchers with TableDriven
         |""".stripMargin)
 
     // Create the HTTP lookup table
-    tableEnv.executeSql(
-      """
+    tableEnv.executeSql("""
         |CREATE TABLE user_profiles (
         |  id INT,
         |  name STRING,
@@ -129,8 +124,7 @@ class HttpLookupConnectorTest extends AnyFlatSpec with Matchers with TableDriven
         |""".stripMargin)
 
     // Query user profiles by joining with source_ids
-    val result = tableEnv.sqlQuery(
-      """
+    val result = tableEnv.sqlQuery("""
         |SELECT u.id, u.name, u.username, u.email
         |FROM source_ids s
         |JOIN user_profiles FOR SYSTEM_TIME AS OF s.proc_time AS u
@@ -140,7 +134,7 @@ class HttpLookupConnectorTest extends AnyFlatSpec with Matchers with TableDriven
     // Execute and collect results
     val resultTable = result.execute()
     val iterator = resultTable.collect()
-    
+
     val results = new ArrayBuffer[Row]()
     var count = 0
     while (iterator.hasNext && count < 10) {
@@ -154,10 +148,10 @@ class HttpLookupConnectorTest extends AnyFlatSpec with Matchers with TableDriven
 
     // Verify each record has the expected fields
     for (row <- results) {
-      row.getField(0) shouldNot be(null)  // id
-      row.getField(1) shouldNot be(null)  // name  
-      row.getField(2) shouldNot be(null)  // username
-      row.getField(3) shouldNot be(null)  // email
+      row.getField(0) shouldNot be(null) // id
+      row.getField(1) shouldNot be(null) // name
+      row.getField(2) shouldNot be(null) // username
+      row.getField(3) shouldNot be(null) // email
     }
   }
-} 
+}

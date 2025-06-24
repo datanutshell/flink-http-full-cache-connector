@@ -3,18 +3,10 @@ package com.datanutshell.flink.connector
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.flink.api.common.io.statistics.BaseStatistics
-import org.apache.flink.api.common.io.{
-  DefaultInputSplitAssigner,
-  InputFormat,
-  RichInputFormat
-}
+import org.apache.flink.api.common.io.{DefaultInputSplitAssigner, InputFormat, RichInputFormat}
 import org.apache.flink.api.common.serialization.DeserializationSchema
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.core.io.{
-  GenericInputSplit,
-  InputSplit,
-  InputSplitAssigner
-}
+import org.apache.flink.core.io.{GenericInputSplit, InputSplit, InputSplitAssigner}
 import org.apache.flink.formats.common.TimestampFormat
 import org.apache.flink.formats.json.JsonRowDataDeserializationSchema
 import org.apache.flink.metrics.MetricGroup
@@ -42,6 +34,7 @@ class HttpRowDataInputFormatProvider(
     maxRetries: Int,
     retryDelayMs: Int
 ) extends InputFormatProvider {
+
   override def createInputFormat(): InputFormat[RowData, _] = {
     new HttpRowDataInputFormat(
       projectionDataType,
@@ -84,9 +77,8 @@ class HttpRowDataInputFormat(
     require(retryDelayMs > 0, "Retry delay must be positive")
   }
 
-  override def createInputSplits(minNumSplits: Int): Array[InputSplit] = {
+  override def createInputSplits(minNumSplits: Int): Array[InputSplit] =
     Array(new GenericInputSplit(0, 1))
-  }
 
   private def fetchWithRetry(): HttpResponse[String] = {
     var lastException: Exception = null
@@ -102,11 +94,11 @@ class HttpRowDataInputFormat(
           .build()
 
         val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-        
+
         if (response.statusCode() == HttpURLConnection.HTTP_OK) {
           return response
         }
-        
+
         // For non-200 responses, throw an exception to trigger retry
         throw new RuntimeException(
           s"HTTP request failed with status ${response.statusCode()}. Response body: ${response.body()}"
@@ -133,9 +125,9 @@ class HttpRowDataInputFormat(
 
   private def fetchAndParseData(): Unit = {
     logger.info(s"Fetching data from $url")
-    
+
     val response = fetchWithRetry()
-    
+
     val jsonNode = Try(objectMapper.readTree(response.body())) match {
       case Success(node) => node
       case Failure(e) =>
@@ -158,15 +150,13 @@ class HttpRowDataInputFormat(
       case arrayNode if arrayNode.isArray =>
         maxRows = arrayNode.size()
         logger.info(s"Processing array with $maxRows elements")
-        arrayNode.elements().forEachRemaining { node =>
-          results += deserializeNode(node)
-        }
+        arrayNode.elements().forEachRemaining(node => results += deserializeNode(node))
       case singleNode =>
         maxRows = 1
         logger.info("Processing single JSON object")
         results += deserializeNode(singleNode)
     }
-    
+
     logger.info(s"Successfully processed $maxRows records")
   }
 
@@ -236,10 +226,10 @@ class HttpRowDataInputFormat(
 
   override def getInputSplitAssigner(
       splits: Array[InputSplit]
-  ): InputSplitAssigner = {
+  ): InputSplitAssigner =
     new DefaultInputSplitAssigner(splits)
-  }
 
   override def getStatistics(cachedStatistics: BaseStatistics): BaseStatistics =
     null
+
 }

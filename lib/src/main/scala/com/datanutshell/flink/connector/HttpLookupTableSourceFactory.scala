@@ -1,21 +1,10 @@
 package com.datanutshell.flink.connector
 
-import org.apache.flink.configuration.{
-  ConfigOption,
-  ConfigOptions,
-  ReadableConfig
-}
+import org.apache.flink.configuration.{ConfigOption, ConfigOptions, ReadableConfig}
 import org.apache.flink.table.connector.source.DynamicTableSource
 import org.apache.flink.table.connector.source.lookup.LookupOptions
-import org.apache.flink.table.connector.source.lookup.cache.{
-  DefaultLookupCache,
-  LookupCache
-}
-import org.apache.flink.table.factories.{
-  DynamicTableFactory,
-  DynamicTableSourceFactory,
-  FactoryUtil
-}
+import org.apache.flink.table.connector.source.lookup.cache.{DefaultLookupCache, LookupCache}
+import org.apache.flink.table.factories.{DynamicTableFactory, DynamicTableSourceFactory, FactoryUtil}
 import org.apache.flink.table.api.ValidationException
 
 import java.time.Duration
@@ -37,24 +26,30 @@ class HttpLookupTableSourceFactory extends DynamicTableSourceFactory {
 
   private val URL = ConfigOptions.key("url").stringType().noDefaultValue()
   private val XPATH = ConfigOptions.key("xpath").stringType().noDefaultValue()
+
   private val CACHE_REFRESH_INTERVAL = ConfigOptions
     .key("cache.refresh-interval")
     .stringType()
     .defaultValue("PT5M")
+
   private val METHOD =
     ConfigOptions.key("method").stringType().defaultValue("GET")
+
   private val CONNECT_TIMEOUT = ConfigOptions
     .key("connect.timeout.seconds")
     .intType()
     .defaultValue(10)
+
   private val READ_TIMEOUT = ConfigOptions
     .key("read.timeout.seconds")
     .intType()
     .defaultValue(30)
+
   private val MAX_RETRIES = ConfigOptions
     .key("max.retries")
     .intType()
     .defaultValue(3)
+
   private val RETRY_DELAY = ConfigOptions
     .key("retry.delay.ms")
     .intType()
@@ -69,19 +64,20 @@ class HttpLookupTableSourceFactory extends DynamicTableSourceFactory {
     val options = helper.getOptions
     val url = options.get(URL)
     val xpath = options.get(XPATH)
-    
+
     // Validate refresh interval format
     val refreshIntervalStr = options.get(CACHE_REFRESH_INTERVAL)
-    val refreshInterval = try {
-      Duration.parse(refreshIntervalStr)
-    } catch {
-      case e: Exception =>
-        throw new ValidationException(
-          s"Invalid format for cache.refresh-interval: '$refreshIntervalStr'. " +
-          "Expected format is ISO-8601 duration (e.g., PT5M for 5 minutes)."
-        )
-    }
-    
+    val refreshInterval =
+      try
+        Duration.parse(refreshIntervalStr)
+      catch {
+        case e: Exception =>
+          throw new ValidationException(
+            s"Invalid format for cache.refresh-interval: '$refreshIntervalStr'. " +
+              "Expected format is ISO-8601 duration (e.g., PT5M for 5 minutes)."
+          )
+      }
+
     // Validate timeout values
     val connectTimeout = options.get(CONNECT_TIMEOUT)
     if (connectTimeout <= 0) {
@@ -89,21 +85,21 @@ class HttpLookupTableSourceFactory extends DynamicTableSourceFactory {
         s"Invalid value for connect.timeout.seconds: $connectTimeout. Must be positive."
       )
     }
-    
+
     val readTimeout = options.get(READ_TIMEOUT)
     if (readTimeout <= 0) {
       throw new ValidationException(
         s"Invalid value for read.timeout.seconds: $readTimeout. Must be positive."
       )
     }
-    
+
     val maxRetries = options.get(MAX_RETRIES)
     if (maxRetries < 0) {
       throw new ValidationException(
         s"Invalid value for max.retries: $maxRetries. Must be non-negative."
       )
     }
-    
+
     val retryDelay = options.get(RETRY_DELAY)
     if (retryDelay <= 0) {
       throw new ValidationException(
@@ -141,4 +137,5 @@ class HttpLookupTableSourceFactory extends DynamicTableSourceFactory {
       MAX_RETRIES,
       RETRY_DELAY
     )
+
 }

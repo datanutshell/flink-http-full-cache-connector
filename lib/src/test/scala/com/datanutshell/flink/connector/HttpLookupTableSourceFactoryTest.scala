@@ -46,7 +46,7 @@ class HttpLookupTableSourceFactoryTest extends AnyFlatSpec with Matchers {
 
     val source = factory.createDynamicTableSource(context)
     source shouldBe a[HttpLookupTableSource]
-    
+
     val httpSource = source.asInstanceOf[HttpLookupTableSource]
     httpSource.url shouldBe "https://api.example.com/data"
     httpSource.xpath shouldBe "/data"
@@ -69,7 +69,7 @@ class HttpLookupTableSourceFactoryTest extends AnyFlatSpec with Matchers {
 
     val source = factory.createDynamicTableSource(context)
     val httpSource = source.asInstanceOf[HttpLookupTableSource]
-    
+
     httpSource.refreshCacheInterval shouldBe Duration.parse("PT5M")
     httpSource.method shouldBe "GET"
     httpSource.connectTimeoutSeconds shouldBe 10
@@ -89,7 +89,7 @@ class HttpLookupTableSourceFactoryTest extends AnyFlatSpec with Matchers {
     val exception = intercept[ValidationException] {
       factory.createDynamicTableSource(context)
     }
-    
+
     exception.getMessage should include("url")
   }
 
@@ -106,7 +106,7 @@ class HttpLookupTableSourceFactoryTest extends AnyFlatSpec with Matchers {
     val exception = intercept[ValidationException] {
       factory.createDynamicTableSource(context)
     }
-    
+
     exception.getMessage should include("cache.refresh-interval")
   }
 
@@ -123,7 +123,7 @@ class HttpLookupTableSourceFactoryTest extends AnyFlatSpec with Matchers {
     val exception = intercept[ValidationException] {
       factory.createDynamicTableSource(context)
     }
-    
+
     exception.getMessage should include("connect.timeout.seconds")
   }
 
@@ -135,7 +135,7 @@ class HttpLookupTableSourceFactoryTest extends AnyFlatSpec with Matchers {
   it should "have correct required options" in {
     val factory = new HttpLookupTableSourceFactory
     val requiredOptions = factory.requiredOptions()
-    
+
     requiredOptions.size() shouldBe 1
     requiredOptions.contains(ConfigOptions.key("url").stringType().noDefaultValue()) shouldBe true
   }
@@ -145,38 +145,38 @@ class HttpLookupTableSourceFactoryTest extends AnyFlatSpec with Matchers {
     val context = mock(classOf[DynamicTableFactory.Context])
     val catalogTable = mock(classOf[ResolvedCatalogTable])
     val readableConfig = mock(classOf[ReadableConfig])
-    
+
     // Setup catalog table mock
     when(catalogTable.getUnresolvedSchema).thenReturn(Schema.newBuilder().build())
     when(catalogTable.getPartitionKeys).thenReturn(util.Collections.emptyList[String]())
     when(catalogTable.getComment).thenAnswer(_ => util.Optional.empty[String]())
     when(catalogTable.getDescription).thenAnswer(_ => util.Optional.empty[String]())
     when(catalogTable.getTableKind).thenReturn(CatalogBaseTable.TableKind.TABLE)
-    
+
     // Setup options map
     val optionsMap = new util.HashMap[String, String]()
     options.foreach { case (k, v) => optionsMap.put(k, v) }
     when(catalogTable.getOptions).thenReturn(optionsMap)
-    
+
     // Setup readable config mock
-    when(readableConfig.get(any[ConfigOption[Any]])).thenAnswer(invocation => {
+    when(readableConfig.get(any[ConfigOption[Any]])).thenAnswer { invocation =>
       val option = invocation.getArgument[ConfigOption[Any]](0)
       options.get(option.key()) match {
         case Some(value) => value
-        case None => option.defaultValue()
+        case None        => option.defaultValue()
       }
-    })
-    
-    when(readableConfig.getOptional(any[ConfigOption[Any]])).thenAnswer(invocation => {
+    }
+
+    when(readableConfig.getOptional(any[ConfigOption[Any]])).thenAnswer { invocation =>
       val option = invocation.getArgument[ConfigOption[Any]](0)
       options.get(option.key()) match {
         case Some(value) => util.Optional.of(value)
-        case None => util.Optional.empty()
+        case None        => util.Optional.empty()
       }
-    })
-    
+    }
+
     when(readableConfig.toMap).thenReturn(optionsMap)
-    
+
     // Setup context mock
     when(context.getCatalogTable).thenReturn(catalogTable)
     when(context.getObjectIdentifier).thenReturn(
@@ -191,7 +191,8 @@ class HttpLookupTableSourceFactoryTest extends AnyFlatSpec with Matchers {
         DataTypes.FIELD("name", DataTypes.STRING())
       )
     )
-    
+
     context
   }
-} 
+
+}

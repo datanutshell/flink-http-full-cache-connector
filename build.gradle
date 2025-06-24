@@ -4,6 +4,7 @@ plugins {
     id 'maven-publish'
     id 'signing'
     id 'org.jreleaser' version '1.17.0'
+    id 'cz.alenkacz.gradle.scalafmt' version '1.16.2'
 }
 
 group = 'com.datanutshell.flink'
@@ -74,9 +75,6 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
     implementation "com.fasterxml.jackson.module:jackson-module-scala_${scalaVersion}:${jacksonVersion}"
     
-    // Java HTTP Client (comes with Java 11+)
-    // No explicit dependency needed unless targeting older Java versions
-    
     // Logging
     implementation "org.slf4j:slf4j-api:${slf4jVersion}"
     runtimeOnly "org.apache.logging.log4j:log4j-slf4j2-impl:${log4jVersion}"
@@ -117,7 +115,7 @@ test {
     }
 }
 
-sourceCompatibility = '11'  // Using Java 11 for HttpClient support
+sourceCompatibility = '11'
 targetCompatibility = '11'
 
 sourceSets {
@@ -171,11 +169,6 @@ task integrationTest(type: Test) {
 
 check.dependsOn integrationTest
 
-// Scala compiler options
-tasks.withType(ScalaCompile) {
-    scalaCompileOptions.additionalParameters = ["-feature", "-deprecation", "-language:implicitConversions", "-language:postfixOps"]
-    scalaCompileOptions.forkOptions.jvmArgs += "-Xss16M" // Increase stack size
-}
 
 // Java compiler options
 tasks.withType(JavaCompile) {

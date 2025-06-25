@@ -169,16 +169,17 @@ task integrationTest(type: Test) {
 
 check.dependsOn integrationTest
 
-// Task for publishing snapshots
+// Task for publishing snapshots (legacy - now handled by JReleaser)
 task publishSnapshot {
-    description = 'Publishes snapshot version to Sonatype snapshots repository'
+    description = 'Publishes snapshot version via JReleaser'
     group = 'publishing'
-    dependsOn 'publishMavenPublicationToSonatypeSnapshotsRepository'
+    dependsOn 'publishMavenPublicationToStagingRepository'
     
     doFirst {
         if (!version.toString().endsWith('-SNAPSHOT')) {
             throw new GradleException("Version must end with -SNAPSHOT for snapshot publishing. Current version: ${version}")
         }
+        println "Note: Direct snapshot publishing is now handled by JReleaser. Use 'jreleaserFullRelease' instead."
     }
 }
 
@@ -238,14 +239,6 @@ publishing {
             name = 'staging'
             url = layout.buildDirectory.dir('staging-deploy')
         }
-        maven {
-            name = 'sonatypeSnapshots'
-            url = 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
-            credentials {
-                username = project.findProperty('sonatypeUsername') ?: System.getenv('SONATYPE_USERNAME')
-                password = project.findProperty('sonatypePassword') ?: System.getenv('SONATYPE_PASSWORD')
-            }
-        }
     }
 }
 
@@ -292,6 +285,8 @@ jreleaser {
                     stagingRepository('build/staging-deploy')
                     // Explicitly set namespace to control bundle naming
                     namespace = 'com.datanutshell.flink'
+
+                    snapshotSupported = true
                     // Username and password will be provided via environment variables
                     // JRELEASER_MAVENCENTRAL_USERNAME and JRELEASER_MAVENCENTRAL_PASSWORD
                 }

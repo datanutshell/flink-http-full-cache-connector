@@ -103,7 +103,7 @@ jobs:
           name: Test Results
           path: 'build/test-results/**/*.xml'
           reporter: java-junit
-          
+
   release:
     name: Release
     runs-on: ubuntu-latest
@@ -164,7 +164,7 @@ jobs:
         run: ./gradlew jreleaserChangelog
 
       - name: Stage release
-        run: ./gradlew publish
+        run: ./gradlew publishStaging
 
       - name: Release with JReleaser
         env:

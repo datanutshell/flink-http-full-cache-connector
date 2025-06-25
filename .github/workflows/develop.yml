@@ -8,94 +8,95 @@ permissions:
     contents: write
     issues: write
     pull-requests: write
+    checks: write
 
 env:
   JAVA_VERSION: '11'
   JAVA_DISTRO: 'temurin'
 
 jobs:
-#   format-check:
-#     name: Format Check
-#     runs-on: ubuntu-latest
+  format-check:
+    name: Format Check
+    runs-on: ubuntu-latest
     
-#     steps:
-#       - name: Checkout
-#         uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-#       - name: Setup Java
-#         uses: actions/setup-java@v4
-#         with:
-#           java-version: ${{ env.JAVA_VERSION }}
-#           distribution: ${{ env.JAVA_DISTRO }}
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRO }}
 
-#       - name: Setup Gradle
-#         uses: gradle/actions/setup-gradle@v3
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
-#       - name: Cache Gradle packages
-#         uses: actions/cache@v4
-#         with:
-#           path: |
-#             ~/.gradle/caches
-#             ~/.gradle/wrapper
-#           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-#           restore-keys: |
-#             ${{ runner.os }}-gradle-
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
-#       - name: Make gradlew executable
-#         run: chmod +x ./gradlew
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
 
-#       - name: Check Scala formatting
-#         run: ./gradlew checkScalafmtAll
+      - name: Check Scala formatting
+        run: ./gradlew checkScalafmtAll
 
-#   test:
-#     name: Tests
-#     runs-on: ubuntu-latest
-#     needs: format-check
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    needs: format-check
     
-#     steps:
-#       - name: Checkout
-#         uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-#       - name: Setup Java
-#         uses: actions/setup-java@v4
-#         with:
-#           java-version: ${{ env.JAVA_VERSION }}
-#           distribution: ${{ env.JAVA_DISTRO }}
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRO }}
 
-#       - name: Setup Gradle
-#         uses: gradle/actions/setup-gradle@v3
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
-#       - name: Cache Gradle packages
-#         uses: actions/cache@v4
-#         with:
-#           path: |
-#             ~/.gradle/caches
-#             ~/.gradle/wrapper
-#           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-#           restore-keys: |
-#             ${{ runner.os }}-gradle-
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
-#       - name: Make gradlew executable
-#         run: chmod +x ./gradlew
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
 
-#       - name: Run unit tests
-#         run: ./gradlew test
+      - name: Run unit tests
+        run: ./gradlew test
 
-#       - name: Run integration tests
-#         run: ./gradlew integrationTest
+      - name: Run integration tests
+        run: ./gradlew integrationTest
 
-#       - name: Generate test report
-#         uses: dorny/test-reporter@v1
-#         if: success() || failure()
-#         with:
-#           name: Test Results
-#           path: 'build/test-results/**/*.xml'
-#           reporter: java-junit
+      - name: Generate test report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: Test Results
+          path: 'build/test-results/**/*.xml'
+          reporter: java-junit
 
   publish-snapshot:
     name: Publish Snapshot
     runs-on: ubuntu-latest
-    #needs: [format-check, test]
+    needs: [format-check, test]
     environment: prod
     
     steps:
@@ -146,17 +147,29 @@ jobs:
           ./gradlew build -x test -x integrationTest
           ./gradlew publishMavenPublicationToStagingRepository
 
-      - name: Deploy snapshot with JReleaser Portal Publisher API
+      - name: Publish snapshot to Central Portal Snapshots
         env:
-          JRELEASER_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-          JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
-          JRELEASER_GPG_SECRET_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          JRELEASER_MAVENCENTRAL_USERNAME: ${{ secrets.CENTRAL_PORTAL_USERNAME }}
-          JRELEASER_MAVENCENTRAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
-          JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CENTRAL_PORTAL_USERNAME: ${{ secrets.CENTRAL_PORTAL_USERNAME }}
+          CENTRAL_PORTAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingKey: ${{ secrets.GPG_PRIVATE_KEY }}
+          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          echo "Publishing snapshot version: ${SNAPSHOT_VERSION} via JReleaser Portal Publisher API"
-          ./gradlew jreleaserFullRelease --info --stacktrace
+          echo "Publishing snapshot version: ${SNAPSHOT_VERSION} to Central Portal Snapshots"
+          ./gradlew publishSnapshot --info
+
+      - name: Create GitHub snapshot release and publish to Maven
+        env:   
+            JRELEASER_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+            JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+            JRELEASER_GPG_SECRET_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+            JRELEASER_MAVENCENTRAL_USERNAME: ${{ secrets.CENTRAL_PORTAL_USERNAME }}
+            JRELEASER_MAVENCENTRAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
+            JRELEASER_NEXUS2_SNAPSHOT_DEPLOY_USERNAME: ${{ secrets.CENTRAL_PORTAL_USERNAME }}
+            JRELEASER_NEXUS2_SNAPSHOT_DEPLOY_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
+            JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Using JReleaser for snapshot version: ${SNAPSHOT_VERSION}"
+          ./gradlew jreleaserChangelog jreleaserDeploy jreleaserRelease --info
 
       - name: JReleaser output
         if: always()

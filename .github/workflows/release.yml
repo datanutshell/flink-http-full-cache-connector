@@ -11,6 +11,12 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  checks: write
+
 env:
   JAVA_VERSION: '11'
   JAVA_DISTRO: 'temurin'
@@ -97,16 +103,12 @@ jobs:
           name: Test Results
           path: 'build/test-results/**/*.xml'
           reporter: java-junit
-
+          
   release:
     name: Release
     runs-on: ubuntu-latest
     needs: [format-check, test]
     environment: prod
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
     
     steps:
       - name: Checkout

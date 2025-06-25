@@ -169,17 +169,16 @@ task integrationTest(type: Test) {
 
 check.dependsOn integrationTest
 
-// Task for publishing snapshots (legacy - now handled by JReleaser)
+// Task for publishing snapshots
 task publishSnapshot {
-    description = 'Publishes snapshot version via JReleaser'
+    description = 'Publishes snapshot version to Central Portal Snapshots'
     group = 'publishing'
-    dependsOn 'publishMavenPublicationToStagingRepository'
+    dependsOn 'publishMavenPublicationToCentralPortalSnapshotsRepository'
     
     doFirst {
         if (!version.toString().endsWith('-SNAPSHOT')) {
             throw new GradleException("Version must end with -SNAPSHOT for snapshot publishing. Current version: ${version}")
         }
-        println "Note: Direct snapshot publishing is now handled by JReleaser. Use 'jreleaserFullRelease' instead."
     }
 }
 
@@ -239,6 +238,14 @@ publishing {
             name = 'staging'
             url = layout.buildDirectory.dir('staging-deploy')
         }
+        maven {
+            name = 'centralPortalSnapshots'
+            url = 'https://central.sonatype.com/repository/maven-snapshots/'
+            credentials {
+                username = project.findProperty('centralPortalUsername') ?: System.getenv('CENTRAL_PORTAL_USERNAME')
+                password = project.findProperty('centralPortalPassword') ?: System.getenv('CENTRAL_PORTAL_PASSWORD')
+            }
+        }
     }
 }
 
@@ -280,15 +287,29 @@ jreleaser {
         maven {
             mavenCentral {
                 sonatype {
-                    active = 'ALWAYS'
+                    // Only deploy to Maven Central for release versions, not snapshots
+                    active = project.version.toString().endsWith('-SNAPSHOT') ? 'NEVER' : 'ALWAYS'
                     url = 'https://central.sonatype.com/api/v1/publisher'
                     stagingRepository('build/staging-deploy')
                     // Explicitly set namespace to control bundle naming
                     namespace = 'com.datanutshell.flink'
-
-                    snapshotSupported = true
                     // Username and password will be provided via environment variables
                     // JRELEASER_MAVENCENTRAL_USERNAME and JRELEASER_MAVENCENTRAL_PASSWORD
+                }
+            }
+            nexus2 {
+                'snapshot-deploy' {
+                    // Only deploy snapshots to Central Portal Snapshots repository
+                    active = project.version.toString().endsWith('-SNAPSHOT') ? 'ALWAYS' : 'NEVER'
+                    url = 'https://central.sonatype.com/service/local'
+                    snapshotUrl = 'https://central.sonatype.com/repository/maven-snapshots/'
+                    applyMavenCentralRules = true
+                    snapshotSupported = true
+                    closeRepository = false
+                    releaseRepository = false
+                    stagingRepository('build/staging-deploy')
+                    // Username and password will be provided via environment variables
+                    // JRELEASER_NEXUS2_SNAPSHOT_DEPLOY_USERNAME and JRELEASER_NEXUS2_SNAPSHOT_DEPLOY_PASSWORD
                 }
             }
         }

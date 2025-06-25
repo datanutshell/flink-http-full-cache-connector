@@ -4,6 +4,7 @@ plugins {
     id 'maven-publish'
     id 'signing'
     id 'org.jreleaser' version '1.17.0'
+    id 'cz.alenkacz.gradle.scalafmt' version '1.16.2'
 }
 
 group = 'com.datanutshell.flink'
@@ -74,9 +75,6 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
     implementation "com.fasterxml.jackson.module:jackson-module-scala_${scalaVersion}:${jacksonVersion}"
     
-    // Java HTTP Client (comes with Java 11+)
-    // No explicit dependency needed unless targeting older Java versions
-    
     // Logging
     implementation "org.slf4j:slf4j-api:${slf4jVersion}"
     runtimeOnly "org.apache.logging.log4j:log4j-slf4j2-impl:${log4jVersion}"
@@ -117,7 +115,7 @@ test {
     }
 }
 
-sourceCompatibility = '11'  // Using Java 11 for HttpClient support
+sourceCompatibility = '11'
 targetCompatibility = '11'
 
 sourceSets {
@@ -171,11 +169,19 @@ task integrationTest(type: Test) {
 
 check.dependsOn integrationTest
 
-// Scala compiler options
-tasks.withType(ScalaCompile) {
-    scalaCompileOptions.additionalParameters = ["-feature", "-deprecation", "-language:implicitConversions", "-language:postfixOps"]
-    scalaCompileOptions.forkOptions.jvmArgs += "-Xss16M" // Increase stack size
+// Task for publishing snapshots
+task publishSnapshot {
+    description = 'Publishes snapshot version to Central Portal Snapshots'
+    group = 'publishing'
+    dependsOn 'publishMavenPublicationToCentralPortalSnapshotsRepository'
+    
+    doFirst {
+        if (!version.toString().endsWith('-SNAPSHOT')) {
+            throw new GradleException("Version must end with -SNAPSHOT for snapshot publishing. Current version: ${version}")
+        }
+    }
 }
+
 
 // Java compiler options
 tasks.withType(JavaCompile) {
@@ -229,9 +235,29 @@ publishing {
 
     repositories {
         maven {
+            name = 'staging'
             url = layout.buildDirectory.dir('staging-deploy')
         }
+        maven {
+            name = 'centralPortalSnapshots'
+            url = 'https://central.sonatype.com/repository/maven-snapshots/'
+            credentials {
+                username = project.findProperty('centralPortalUsername') ?: System.getenv('CENTRAL_PORTAL_USERNAME')
+                password = project.findProperty('centralPortalPassword') ?: System.getenv('CENTRAL_PORTAL_PASSWORD')
+            }
+        }
     }
+}
+
+// Signing configuration for snapshots
+signing {
+    required { gradle.taskGraph.hasTask("publishSnapshot") }
+    def signingKey = project.findProperty('signingKey') ?: System.getenv('ORG_GRADLE_PROJECT_signingKey')
+    def signingPassword = project.findProperty('signingPassword') ?: System.getenv('ORG_GRADLE_PROJECT_signingPassword')
+    if (signingKey && signingPassword) {
+        useInMemoryPgpKeys(signingKey, signingPassword)
+    }
+    sign publishing.publications.maven
 }
 
 // JReleaser Configuration
@@ -261,13 +287,29 @@ jreleaser {
         maven {
             mavenCentral {
                 sonatype {
-                    active = 'ALWAYS'
+                    // Only deploy to Maven Central for release versions, not snapshots
+                    active = project.version.toString().endsWith('-SNAPSHOT') ? 'NEVER' : 'ALWAYS'
                     url = 'https://central.sonatype.com/api/v1/publisher'
                     stagingRepository('build/staging-deploy')
                     // Explicitly set namespace to control bundle naming
                     namespace = 'com.datanutshell.flink'
                     // Username and password will be provided via environment variables
                     // JRELEASER_MAVENCENTRAL_USERNAME and JRELEASER_MAVENCENTRAL_PASSWORD
+                }
+            }
+            nexus2 {
+                'snapshot-deploy' {
+                    // Only deploy snapshots to Central Portal Snapshots repository
+                    active = project.version.toString().endsWith('-SNAPSHOT') ? 'ALWAYS' : 'NEVER'
+                    url = 'https://central.sonatype.com/service/local'
+                    snapshotUrl = 'https://central.sonatype.com/repository/maven-snapshots/'
+                    applyMavenCentralRules = true
+                    snapshotSupported = true
+                    closeRepository = false
+                    releaseRepository = false
+                    stagingRepository('build/staging-deploy')
+                    // Username and password will be provided via environment variables
+                    // JRELEASER_NEXUS2_SNAPSHOT_DEPLOY_USERNAME and JRELEASER_NEXUS2_SNAPSHOT_DEPLOY_PASSWORD
                 }
             }
         }

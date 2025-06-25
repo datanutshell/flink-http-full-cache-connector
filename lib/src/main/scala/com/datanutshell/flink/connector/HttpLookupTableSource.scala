@@ -26,13 +26,12 @@ class HttpLookupTableSource(
     with SupportsProjectionPushDown {
 
   var projectionDataType: DataType = producedDataType
+
   override def applyProjection(
       projectedFields: Array[Array[Int]],
       producedDataType: DataType
-  ): Unit = {
-    projectionDataType =
-      Projection.of(projectedFields).project(producedDataType)
-  }
+  ): Unit =
+    projectionDataType = Projection.of(projectedFields).project(producedDataType)
 
   override def getLookupRuntimeProvider(
       context: LookupTableSource.LookupContext

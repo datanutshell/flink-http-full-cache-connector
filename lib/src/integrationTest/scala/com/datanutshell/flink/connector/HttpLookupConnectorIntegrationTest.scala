@@ -25,7 +25,7 @@ import org.scalatest.BeforeAndAfterAll
 class HttpLookupConnectorIntegrationTest
     extends AnyFlatSpec
     with Matchers
-    with BeforeAndAfterEach 
+    with BeforeAndAfterEach
     with BeforeAndAfterAll {
 
   // Define the MockServer container
@@ -42,7 +42,7 @@ class HttpLookupConnectorIntegrationTest
     mockServerClient = new MockServerClient(
       container.getHost,
       container.getServerPort
-    ) 
+    )
   }
 
   override def afterAll(): Unit = {
@@ -50,12 +50,12 @@ class HttpLookupConnectorIntegrationTest
     super.afterAll()
   }
 
-  override def beforeEach(): Unit = {
+  override def beforeEach(): Unit =
     mockServerClient.reset()
-  }
 
   // Mock user data
-  val mockUsersJson = """[
+  val mockUsersJson =
+    """[
     { "id": 1, "name": "Mock Leanne Graham", "username": "Mock Bret", "email": "Sincere@april.biz" },
     { "id": 2, "name": "Mock Ervin Howell", "username": "Mock Antonette", "email": "Shanna@melissa.tv" },
     { "id": 3, "name": "Mock Clementine Bauch", "username": "Mock Samantha", "email": "Nathan@yesenia.net" },
@@ -69,7 +69,8 @@ class HttpLookupConnectorIntegrationTest
   ]"""
 
   // Updated mock user data for cache refresh test
-  val updatedMockUsersJson = """[
+  val updatedMockUsersJson =
+    """[
     { "id": 1, "name": "Updated Leanne Graham", "username": "Updated Bret", "email": "Updated@april.biz" },
     { "id": 2, "name": "Updated Ervin Howell", "username": "Updated Antonette", "email": "Updated@melissa.tv" },
     { "id": 3, "name": "Updated Clementine Bauch", "username": "Updated Samantha", "email": "Updated@yesenia.net" },
@@ -108,8 +109,7 @@ class HttpLookupConnectorIntegrationTest
     env.setParallelism(1)
 
     // Create the source orders table
-    tableEnv.executeSql(
-      """
+    tableEnv.executeSql("""
         |CREATE TABLE orders (
         |  order_id STRING,
         |  user_id INT,
@@ -129,36 +129,36 @@ class HttpLookupConnectorIntegrationTest
 
     // Create the HTTP lookup table pointing to the mock server
     tableEnv.executeSql(s"""
-        |CREATE TABLE user_profiles (
-        |  id INT,
-        |  name STRING,
-        |  username STRING,
-        |  email STRING
-        |) WITH (
-        |  'connector' = 'http-lookup-full-cache',
-        |  'url' = 'http://${container.getHost}:${container.getServerPort}/users',
-        |  'xpath' = '',
-        |  'cache.refresh-interval' = 'PT1M'
-        |)
-        |""".stripMargin)
+         |CREATE TABLE user_profiles (
+         |  id INT,
+         |  name STRING,
+         |  username STRING,
+         |  email STRING
+         |) WITH (
+         |  'connector' = 'http-lookup-full-cache',
+         |  'url' = 'http://${container.getHost}:${container.getServerPort}/users',
+         |  'xpath' = '',
+         |  'cache.refresh-interval' = 'PT1M'
+         |)
+         |""".stripMargin)
 
     // Perform the lookup join
     val resultTable = tableEnv.sqlQuery("""
-      |SELECT
-      |  o.order_id,
-      |  o.user_id,
-      |  o.amount,
-      |  u.name,
-      |  u.username,
-      |  u.email
-      |FROM orders AS o
-      |JOIN user_profiles FOR SYSTEM_TIME AS OF o.proc_time AS u
-      |ON o.user_id = u.id
-      |""".stripMargin)
+        |SELECT
+        |  o.order_id,
+        |  o.user_id,
+        |  o.amount,
+        |  u.name,
+        |  u.username,
+        |  u.email
+        |FROM orders AS o
+        |JOIN user_profiles FOR SYSTEM_TIME AS OF o.proc_time AS u
+        |ON o.user_id = u.id
+        |""".stripMargin)
 
     // Collect results
     val results = new ArrayBuffer[Row]()
-    val resultIterator = resultTable.executeAndCollect() 
+    val resultIterator = resultTable.executeAndCollect()
     var count = 0
     while (resultIterator.hasNext && count < 3) {
       results += resultIterator.next()
@@ -168,21 +168,41 @@ class HttpLookupConnectorIntegrationTest
 
     // Define expected results based on mock data
     val expectedResults = Seq(
-      Row.of("generated_order_id_1", Integer.valueOf(1), Double.box(55.0), "Mock Leanne Graham", "Mock Bret", "Sincere@april.biz"),
-      Row.of("generated_order_id_2", Integer.valueOf(2), Double.box(55.0), "Mock Ervin Howell", "Mock Antonette", "Shanna@melissa.tv"),
-      Row.of("generated_order_id_3", Integer.valueOf(3), Double.box(55.0), "Mock Clementine Bauch", "Mock Samantha", "Nathan@yesenia.net")
+      Row.of(
+        "generated_order_id_1",
+        Integer.valueOf(1),
+        Double.box(55.0),
+        "Mock Leanne Graham",
+        "Mock Bret",
+        "Sincere@april.biz"
+      ),
+      Row.of(
+        "generated_order_id_2",
+        Integer.valueOf(2),
+        Double.box(55.0),
+        "Mock Ervin Howell",
+        "Mock Antonette",
+        "Shanna@melissa.tv"
+      ),
+      Row.of(
+        "generated_order_id_3",
+        Integer.valueOf(3),
+        Double.box(55.0),
+        "Mock Clementine Bauch",
+        "Mock Samantha",
+        "Nathan@yesenia.net"
+      )
     )
 
     // Validate results (ignoring order_id and amount as they are random)
     results should have size 3
-    results.sortBy(_.getFieldAs[Integer]("user_id")).zip(expectedResults).foreach {
-      case (actual, expected) =>
-        actual.getFieldAs[Integer]("user_id") shouldBe expected.getFieldAs[Integer](1)
-        actual.getFieldAs[String]("name") shouldBe expected.getFieldAs[String](3)
-        actual.getFieldAs[String]("username") shouldBe expected.getFieldAs[String](4)
-        actual.getFieldAs[String]("email") shouldBe expected.getFieldAs[String](5)
+    results.sortBy(_.getFieldAs[Integer]("user_id")).zip(expectedResults).foreach { case (actual, expected) =>
+      actual.getFieldAs[Integer]("user_id") shouldBe expected.getFieldAs[Integer](1)
+      actual.getFieldAs[String]("name") shouldBe expected.getFieldAs[String](3)
+      actual.getFieldAs[String]("username") shouldBe expected.getFieldAs[String](4)
+      actual.getFieldAs[String]("email") shouldBe expected.getFieldAs[String](5)
     }
-    
+
     // Verify that the mock server was called exactly once for this test
     mockServerClient.verify(
       request()
@@ -231,26 +251,26 @@ class HttpLookupConnectorIntegrationTest
 
     // Create the HTTP lookup table pointing to the mock server
     tableEnv.executeSql(s"""
-        |CREATE TABLE user_profiles (
-        |  id INT,
-        |  name STRING,
-        |  username STRING,
-        |  email STRING
-        |) WITH (
-        |  'connector' = 'http-lookup-full-cache',
-        |  'url' = 'http://${container.getHost}:${container.getServerPort}/users',
-        |  'xpath' = '',
-        |  'cache.refresh-interval' = 'PT1M'
-        |)
-        |""".stripMargin)
+         |CREATE TABLE user_profiles (
+         |  id INT,
+         |  name STRING,
+         |  username STRING,
+         |  email STRING
+         |) WITH (
+         |  'connector' = 'http-lookup-full-cache',
+         |  'url' = 'http://${container.getHost}:${container.getServerPort}/users',
+         |  'xpath' = '',
+         |  'cache.refresh-interval' = 'PT1M'
+         |)
+         |""".stripMargin)
 
     // Query user profiles by joining with source_ids
     val resultTable = tableEnv.sqlQuery("""
-      |SELECT u.id, u.name, u.username, u.email
-      |FROM source_ids s
-      |JOIN user_profiles FOR SYSTEM_TIME AS OF s.proc_time AS u
-      |ON s.id = u.id
-      |""".stripMargin)
+        |SELECT u.id, u.name, u.username, u.email
+        |FROM source_ids s
+        |JOIN user_profiles FOR SYSTEM_TIME AS OF s.proc_time AS u
+        |ON s.id = u.id
+        |""".stripMargin)
 
     // Collect results
     val results = new ArrayBuffer[Row]()
@@ -270,7 +290,7 @@ class HttpLookupConnectorIntegrationTest
     firstRecord.getFieldAs[String]("name") shouldBe "Mock Leanne Graham"
     firstRecord.getFieldAs[String]("username") shouldBe "Mock Bret"
     firstRecord.getFieldAs[String]("email") shouldBe "Sincere@april.biz"
-    
+
     // Verify that the mock server was called exactly once for this test
     mockServerClient.verify(
       request()
@@ -279,11 +299,11 @@ class HttpLookupConnectorIntegrationTest
       VerificationTimes.exactly(1)
     )
   }
-  
+
   it should "handle request failures and retries successfully" in {
     // Setup expectations for this test - fail twice then succeed
     var requestCount = 0
-    
+
     // First request - fail with 500
     mockServerClient
       .when(
@@ -298,7 +318,7 @@ class HttpLookupConnectorIntegrationTest
           .withHeader("Content-Type", "application/json")
           .withBody("""{"error": "Internal Server Error"}""")
       )
-    
+
     // Second request - fail with 500
     mockServerClient
       .when(
@@ -313,7 +333,7 @@ class HttpLookupConnectorIntegrationTest
           .withHeader("Content-Type", "application/json")
           .withBody("""{"error": "Internal Server Error"}""")
       )
-    
+
     // Third request - succeed with 200
     mockServerClient
       .when(
@@ -333,7 +353,7 @@ class HttpLookupConnectorIntegrationTest
     val config = new Configuration()
     config.set(RestartStrategyOptions.RESTART_STRATEGY, "none")
     env.configure(config)
-    
+
     val settings = EnvironmentSettings.newInstance().inStreamingMode().build()
     val tableEnv = StreamTableEnvironment.create(env, settings)
     env.setParallelism(1)
@@ -354,28 +374,28 @@ class HttpLookupConnectorIntegrationTest
 
     // Create the HTTP lookup table pointing to the mock server with retry settings
     tableEnv.executeSql(s"""
-        |CREATE TABLE user_profiles (
-        |  id INT,
-        |  name STRING,
-        |  username STRING,
-        |  email STRING
-        |) WITH (
-        |  'connector' = 'http-lookup-full-cache',
-        |  'url' = 'http://${container.getHost}:${container.getServerPort}/users',
-        |  'xpath' = '',
-        |  'cache.refresh-interval' = 'PT1M',
-        |  'max.retries' = '3',
-        |  'retry.delay.ms' = '100'
-        |)
-        |""".stripMargin)
+         |CREATE TABLE user_profiles (
+         |  id INT,
+         |  name STRING,
+         |  username STRING,
+         |  email STRING
+         |) WITH (
+         |  'connector' = 'http-lookup-full-cache',
+         |  'url' = 'http://${container.getHost}:${container.getServerPort}/users',
+         |  'xpath' = '',
+         |  'cache.refresh-interval' = 'PT1M',
+         |  'max.retries' = '3',
+         |  'retry.delay.ms' = '100'
+         |)
+         |""".stripMargin)
 
     // Query user profiles by joining with source_ids
     val resultTable = tableEnv.sqlQuery("""
-      |SELECT u.id, u.name, u.username, u.email
-      |FROM source_ids s
-      |JOIN user_profiles FOR SYSTEM_TIME AS OF s.proc_time AS u
-      |ON s.id = u.id
-      |""".stripMargin)
+        |SELECT u.id, u.name, u.username, u.email
+        |FROM source_ids s
+        |JOIN user_profiles FOR SYSTEM_TIME AS OF s.proc_time AS u
+        |ON s.id = u.id
+        |""".stripMargin)
 
     // Collect results
     val results = new ArrayBuffer[Row]()
@@ -395,7 +415,7 @@ class HttpLookupConnectorIntegrationTest
     firstRecord.getFieldAs[String]("name") shouldBe "Mock Leanne Graham"
     firstRecord.getFieldAs[String]("username") shouldBe "Mock Bret"
     firstRecord.getFieldAs[String]("email") shouldBe "Sincere@april.biz"
-    
+
     // Verify that the mock server was called exactly 3 times (2 failures + 1 success)
     mockServerClient.verify(
       request()
@@ -404,14 +424,15 @@ class HttpLookupConnectorIntegrationTest
       VerificationTimes.exactly(3)
     )
   }
-  
+
   it should "refresh cache with updated data" in {
     // Setup initial expectations
     mockServerClient
       .when(
         request()
           .withMethod("GET")
-          .withPath("/users")
+          .withPath("/users"),
+        Times.once()
       )
       .respond(
         response()
@@ -444,26 +465,26 @@ class HttpLookupConnectorIntegrationTest
 
     // Create the HTTP lookup table with a short refresh interval for testing
     tableEnv.executeSql(s"""
-        |CREATE TABLE user_profiles (
-        |  id INT,
-        |  name STRING,
-        |  username STRING,
-        |  email STRING
-        |) WITH (
-        |  'connector' = 'http-lookup-full-cache',
-        |  'url' = 'http://${container.getHost}:${container.getServerPort}/users',
-        |  'xpath' = '',
-        |  'cache.refresh-interval' = 'PT5S'
-        |)
-        |""".stripMargin)
+         |CREATE TABLE user_profiles (
+         |  id INT,
+         |  name STRING,
+         |  username STRING,
+         |  email STRING
+         |) WITH (
+         |  'connector' = 'http-lookup-full-cache',
+         |  'url' = 'http://${container.getHost}:${container.getServerPort}/users',
+         |  'xpath' = '',
+         |  'cache.refresh-interval' = 'PT5S'
+         |)
+         |""".stripMargin)
 
     // Query user profiles by joining with source_ids
     val resultTable = tableEnv.sqlQuery("""
-      |SELECT u.id, u.name, u.username, u.email
-      |FROM source_ids s
-      |JOIN user_profiles FOR SYSTEM_TIME AS OF s.proc_time AS u
-      |ON s.id = u.id
-      |""".stripMargin)
+        |SELECT u.id, u.name, u.username, u.email
+        |FROM source_ids s
+        |JOIN user_profiles FOR SYSTEM_TIME AS OF s.proc_time AS u
+        |ON s.id = u.id
+        |""".stripMargin)
 
     // Collect initial results
     val initialResults = new ArrayBuffer[Row]()
@@ -479,13 +500,14 @@ class HttpLookupConnectorIntegrationTest
     initialResults should have size 3
     val initialFirstRecord = initialResults.find(_.getFieldAs[Integer]("id") == 1).get
     initialFirstRecord.getFieldAs[String]("name") shouldBe "Mock Leanne Graham"
-    
+
     // Update the mock server response to return updated data
     mockServerClient
       .when(
         request()
           .withMethod("GET")
-          .withPath("/users")
+          .withPath("/users"),
+        Times.once()
       )
       .respond(
         response()
@@ -493,10 +515,10 @@ class HttpLookupConnectorIntegrationTest
           .withHeader("Content-Type", "application/json")
           .withBody(updatedMockUsersJson)
       )
-    
+
     // Wait for cache refresh interval to pass
     Thread.sleep(6000)
-    
+
     // Collect results after cache refresh
     val updatedResults = new ArrayBuffer[Row]()
     val updatedIterator = resultTable.executeAndCollect()
@@ -506,12 +528,12 @@ class HttpLookupConnectorIntegrationTest
       count += 1
     }
     updatedIterator.close()
-    
+
     // Verify updated results
     updatedResults should have size 3
     val updatedFirstRecord = updatedResults.find(_.getFieldAs[Integer]("id") == 1).get
     updatedFirstRecord.getFieldAs[String]("name") shouldBe "Updated Leanne Graham"
-    
+
     // Verify that the mock server was called at least twice (initial + refresh)
     mockServerClient.verify(
       request()
@@ -520,9 +542,9 @@ class HttpLookupConnectorIntegrationTest
       VerificationTimes.atLeast(2)
     )
   }
-  
+
   it should "fail the stream when a request fails after a successful one" in {
-    // Setup expectations - first request succeeds, second fails
+    // Setup expectations - first request succeeds, subsequent requests fail
     mockServerClient
       .when(
         request()
@@ -536,8 +558,8 @@ class HttpLookupConnectorIntegrationTest
           .withHeader("Content-Type", "application/json")
           .withBody(mockUsersJson)
       )
-    
-    // Second request will fail
+
+    // Subsequent requests will fail
     mockServerClient
       .when(
         request()
@@ -556,7 +578,7 @@ class HttpLookupConnectorIntegrationTest
     val config = new Configuration()
     config.set(RestartStrategyOptions.RESTART_STRATEGY, "none")
     env.configure(config)
-    
+
     val settings = EnvironmentSettings.newInstance().inStreamingMode().build()
     val tableEnv = StreamTableEnvironment.create(env, settings)
     env.setParallelism(1)
@@ -577,27 +599,27 @@ class HttpLookupConnectorIntegrationTest
 
     // Create the HTTP lookup table with a short refresh interval for testing
     tableEnv.executeSql(s"""
-        |CREATE TABLE user_profiles (
-        |  id INT,
-        |  name STRING,
-        |  username STRING,
-        |  email STRING
-        |) WITH (
-        |  'connector' = 'http-lookup-full-cache',
-        |  'url' = 'http://${container.getHost}:${container.getServerPort}/users',
-        |  'xpath' = '',
-        |  'cache.refresh-interval' = 'PT1S',
-        |  'max.retries' = '1'
-        |)
-        |""".stripMargin)
+         |CREATE TABLE user_profiles (
+         |  id INT,
+         |  name STRING,
+         |  username STRING,
+         |  email STRING
+         |) WITH (
+         |  'connector' = 'http-lookup-full-cache',
+         |  'url' = 'http://${container.getHost}:${container.getServerPort}/users',
+         |  'xpath' = '',
+         |  'cache.refresh-interval' = 'PT1S',
+         |  'max.retries' = '1'
+         |)
+         |""".stripMargin)
 
     // Query user profiles by joining with source_ids
     val resultTable = tableEnv.sqlQuery("""
-      |SELECT u.id, u.name, u.username, u.email
-      |FROM source_ids s
-      |JOIN user_profiles FOR SYSTEM_TIME AS OF s.proc_time AS u
-      |ON s.id = u.id
-      |""".stripMargin)
+        |SELECT u.id, u.name, u.username, u.email
+        |FROM source_ids s
+        |JOIN user_profiles FOR SYSTEM_TIME AS OF s.proc_time AS u
+        |ON s.id = u.id
+        |""".stripMargin)
 
     // Collect initial results - this should succeed
     val initialResults = new ArrayBuffer[Row]()
@@ -613,10 +635,10 @@ class HttpLookupConnectorIntegrationTest
     initialResults should have size 3
     val initialFirstRecord = initialResults.find(_.getFieldAs[Integer]("id") == 1).get
     initialFirstRecord.getFieldAs[String]("name") shouldBe "Mock Leanne Graham"
-    
+
     // Wait for cache refresh interval to pass
     Thread.sleep(3000)
-    
+
     // Try to collect results after cache refresh - this should fail
     val exception = intercept[Exception] {
       val updatedIterator = resultTable.executeAndCollect()
@@ -627,16 +649,25 @@ class HttpLookupConnectorIntegrationTest
       }
       updatedIterator.close()
     }
-    
+
     // Verify that the exception contains information about the HTTP error
-    exception.getMessage should include("500")
-    
-    // Verify that the mock server was called exactly twice (success + failure)
+    // Find the HTTP error message in the exception chain
+    val errorMessage = Iterator
+      .iterate(exception.asInstanceOf[Throwable])(_.getCause)
+      .takeWhile(_ != null)
+      .find(ex => ex.getMessage != null && ex.getMessage.contains("HTTP request failed with status"))
+      .map(_.getMessage)
+      .getOrElse("No matching exception found")
+
+    errorMessage should include("HTTP request failed with status 500")
+
+    // Verify that the mock server was called at least 3 times
+    // (1 initial success + multiple refresh attempts with retries)
     mockServerClient.verify(
       request()
         .withMethod("GET")
         .withPath("/users"),
-      VerificationTimes.exactly(2)
+      VerificationTimes.atLeast(3)
     )
   }
-} 
+}

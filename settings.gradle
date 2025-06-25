@@ -11,3 +11,4 @@ plugins {
 }
 
 rootProject.name = 'flink-http-lookup-connector'
+

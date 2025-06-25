@@ -169,6 +169,19 @@ task integrationTest(type: Test) {
 
 check.dependsOn integrationTest
 
+// Task for publishing snapshots
+task publishSnapshot {
+    description = 'Publishes snapshot version to Sonatype snapshots repository'
+    group = 'publishing'
+    dependsOn 'publishMavenPublicationToSonatypeSnapshotsRepository'
+    
+    doFirst {
+        if (!version.toString().endsWith('-SNAPSHOT')) {
+            throw new GradleException("Version must end with -SNAPSHOT for snapshot publishing. Current version: ${version}")
+        }
+    }
+}
+
 
 // Java compiler options
 tasks.withType(JavaCompile) {
@@ -222,9 +235,29 @@ publishing {
 
     repositories {
         maven {
+            name = 'staging'
             url = layout.buildDirectory.dir('staging-deploy')
         }
+        maven {
+            name = 'sonatypeSnapshots'
+            url = 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
+            credentials {
+                username = project.findProperty('sonatypeUsername') ?: System.getenv('SONATYPE_USERNAME')
+                password = project.findProperty('sonatypePassword') ?: System.getenv('SONATYPE_PASSWORD')
+            }
+        }
     }
+}
+
+// Signing configuration for snapshots
+signing {
+    required { gradle.taskGraph.hasTask("publishSnapshot") }
+    def signingKey = project.findProperty('signingKey') ?: System.getenv('ORG_GRADLE_PROJECT_signingKey')
+    def signingPassword = project.findProperty('signingPassword') ?: System.getenv('ORG_GRADLE_PROJECT_signingPassword')
+    if (signingKey && signingPassword) {
+        useInMemoryPgpKeys(signingKey, signingPassword)
+    }
+    sign publishing.publications.maven
 }
 
 // JReleaser Configuration

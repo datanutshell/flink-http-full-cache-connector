@@ -1,15 +1,12 @@
-name: Release
+name: Develop Branch
 
 on:
   push:
-    tags:
-      - 'v*.*.*'
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Release version'
-        required: true
-        type: string
+    branches: [ develop ]
+
+permissions:
+  contents: read
+  checks: write
 
 env:
   JAVA_VERSION: '11'
@@ -23,8 +20,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -59,8 +54,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -98,15 +91,11 @@ jobs:
           path: 'build/test-results/**/*.xml'
           reporter: java-junit
 
-  release:
-    name: Release
+  publish-snapshot:
+    name: Publish Snapshot
     runs-on: ubuntu-latest
     needs: [format-check, test]
-    environment: prod
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
+    environment: snapshots
     
     steps:
       - name: Checkout
@@ -136,58 +125,35 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Extract version from tag
-        id: extract_version
+      - name: Set snapshot version
         run: |
-          if [[ "${GITHUB_REF}" =~ ^refs/tags/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-            VERSION="${BASH_REMATCH[1]}"
-          elif [[ "${{ github.event.inputs.version }}" != "" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            echo "Invalid version format"
-            exit 1
-          fi
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "Extracted version: ${VERSION}"
-
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          COMMIT_SHORT=$(git rev-parse --short HEAD)
+          SNAPSHOT_VERSION="1.0-${TIMESTAMP}-${COMMIT_SHORT}-SNAPSHOT"
+          echo "SNAPSHOT_VERSION=${SNAPSHOT_VERSION}" >> $GITHUB_ENV
+          echo "Setting version to: ${SNAPSHOT_VERSION}"
+          
       - name: Update version in build.gradle
         run: |
-          sed -i "s/version = '1.0'/version = '${VERSION}'/" build.gradle
+          sed -i "s/version = '1.0'/version = '${SNAPSHOT_VERSION}'/" build.gradle
           echo "Updated version in build.gradle:"
           grep "version = " build.gradle
 
-      - name: Generate changelog
+      - name: Build and publish snapshot
         env:
-          JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew jreleaserChangelog
+          SONATYPE_USERNAME: ${{ secrets.CENTRAL_PORTAL_USERNAME }}
+          SONATYPE_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingKey: ${{ secrets.GPG_PRIVATE_KEY }}
+          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          echo "Publishing snapshot version: ${SNAPSHOT_VERSION}"
+          ./gradlew publishSnapshot --info
 
-      - name: Stage release
-        run: ./gradlew publish
-
-      - name: Release with JReleaser
-        env:
-          JRELEASER_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-          JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
-          JRELEASER_GPG_SECRET_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          JRELEASER_MAVENCENTRAL_USERNAME: ${{ secrets.CENTRAL_PORTAL_USERNAME }}
-          JRELEASER_MAVENCENTRAL_PASSWORD: ${{ secrets.CENTRAL_PORTAL_PASSWORD }}
-          JRELEASER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew jreleaserFullRelease --info --stacktrace
-
-      - name: JReleaser output
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
         with:
-          name: jreleaser-logs
-          path: |
-            build/jreleaser/trace.log
-            build/jreleaser/output.properties
-
-      - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
-        if: success()
-        with:
-          name: release-artifacts
+          name: snapshot-artifacts
           path: |
             build/libs/
             build/staging-deploy/ 
